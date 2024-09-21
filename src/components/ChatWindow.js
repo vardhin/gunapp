@@ -1,52 +1,56 @@
-import React, { useState, useEffect } from "react";
-import Gun from "gun";
-import "gun/sea";
-import "gun/axe";
-import { useParams } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import Gun from 'gun';
+import 'gun/sea';
+import 'gun/axe';
+import { useParams } from 'react-router-dom';
 
 const gun = Gun({
-  peers: ["https://gun-manhattan.herokuapp.com/gun"],
+  peers: ['https://gun-manhattan.herokuapp.com/gun'], // Public Gun peer
 });
 
 const ChatWindow = () => {
-  const { friendID } = useParams(); // Get the friend's unique ID from route params
+  const { friendID } = useParams(); // Get friend's ID from route params
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [userID, setUserID] = useState("");
+  const [newMessage, setNewMessage] = useState('');
+  const [userID, setUserID] = useState('');
 
-  // Load the user ID from localStorage
+  // Load user ID from localStorage or create a new one if it doesn't exist
   useEffect(() => {
-    const storedUserID = localStorage.getItem("userID");
-    setUserID(storedUserID);
+    const storedUserID = localStorage.getItem('userID');
+    if (storedUserID) {
+      setUserID(storedUserID);
+    } else {
+      const newID = gun.user()._.sea.pub; // Use your public key as ID
+      localStorage.setItem('userID', newID);
+      setUserID(newID);
+    }
   }, []);
 
-  // Listen to incoming messages from the friend's room
+  // Listen for messages in your friend's room (receiving messages from them)
   useEffect(() => {
-    const roomID = `room-${friendID}`;
+    const roomID = `room-${userID}`; // Listen to the room with **your own userID** to get messages sent to you
 
     gun.get(roomID).on((data) => {
       if (data && data.text && data.sender !== userID) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { text: data.text, sender: data.sender },
-        ]);
+        // Only show messages that aren't from you (i.e., from your friend)
+        setMessages((prevMessages) => [...prevMessages, { text: data.text, sender: data.sender }]);
       }
     });
-  }, [friendID, userID]);
+  }, [userID]);
 
-  // Handle sending a new message
+  // Handle sending a new message to your friend's room
   const sendMessage = async () => {
-    const roomID = `room-${friendID}`;
+    const roomID = `room-${friendID}`; // You send messages to your friend's room
     const messageData = {
       text: newMessage,
-      sender: userID,
+      sender: userID, // Send with your ID
       timestamp: Date.now(),
     };
 
-    gun.get(roomID).put(messageData); // Send message to the friend's room
+    gun.get(roomID).put(messageData); // Send the message to the friend's room
 
-    setMessages([...messages, messageData]); // Add to local messages
-    setNewMessage(""); // Clear the input field
+    setMessages([...messages, messageData]); // Add your message to the local state
+    setNewMessage(''); // Clear the input field after sending
   };
 
   return (
@@ -55,8 +59,7 @@ const ChatWindow = () => {
       <div className="chat-box">
         {messages.map((msg, index) => (
           <div key={index}>
-            <strong>{msg.sender === userID ? "You" : "Friend"}:</strong>{" "}
-            {msg.text}
+            <strong>{msg.sender === userID ? 'You' : 'Friend'}:</strong> {msg.text}
           </div>
         ))}
       </div>
