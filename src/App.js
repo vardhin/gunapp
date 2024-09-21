@@ -1,17 +1,17 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import MainPage from "./components/MainPage";
-import SendFile from "./components/SendFile"; // For sending files to specific contacts
+import ChatWindow from "./components/ChatWindow";
 
-function App() {
+const App = () => {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<MainPage />} />
-        <Route path="/send/:roomId" element={<SendFile />} />
+        <Route path="/chat/:friendID" element={<ChatWindow />} />
       </Routes>
     </Router>
   );
-}
+};
 
 export default App;
