@@ -55,12 +55,26 @@ const MainPage = () => {
   // Listen for messages/files sent to each contact's room
   useEffect(() => {
     Object.keys(contacts).forEach((contact) => {
-      gun.get(`room-${contact}`).on((data) => {
-        if (data) {
-          setMessages((prevMessages) => ({
-            ...prevMessages,
-            [contact]: data,
-          }));
+      gun.get(`room-${contact}`).on(async (data) => {
+        if (data && data.file) {
+          try {
+            const userPair = JSON.parse(localStorage.getItem("userPair"));
+            const decryptedFile = await Gun.SEA.decrypt(data.file, userPair);
+
+            // Create a Blob and trigger download
+            const blob = new Blob([decryptedFile], { type: "text/plain" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = data.fileName || "received-file.txt";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          } catch (error) {
+            console.error(
+              "Error decrypting or saving the received file:",
+              error,
+            );
+          }
         }
       });
     });
