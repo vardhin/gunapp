@@ -5,7 +5,7 @@ import "gun/sea";
 import "gun/axe";
 
 const gun = Gun({
-  peers: ["https://your-relay-peer.herokuapp.com/gun"],
+  peers: ["https://gun-manhattan.herokuapp.com/gun"],
 });
 
 const MainPage = () => {
