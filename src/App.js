@@ -1,16 +1,17 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import MainPage from "./components/MainPage";
+import SendFile from "./components/SendFile"; // For sending files to specific contacts
 
-const App = () => {
+function App() {
   return (
     <Router>
       <Routes>
-        {/* Define route to the MainPage */}
         <Route path="/" element={<MainPage />} />
+        <Route path="/send/:roomId" element={<SendFile />} />
       </Routes>
     </Router>
   );
-};
+}
 
 export default App;
