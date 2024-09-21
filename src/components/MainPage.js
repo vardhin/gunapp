@@ -1,123 +1,80 @@
-import React, { useState, useEffect } from "react";
-import Gun from "gun";
-import { Link } from "react-router-dom";
-import "gun/sea";
-import "gun/axe";
+import React, { useState, useEffect } from 'react';
+import Gun from 'gun';
+import 'gun/sea';
+import 'gun/axe';
 
 const gun = Gun({
-  peers: ["https://gun-manhattan.herokuapp.com/gun"],
+  peers: ['https://gun-manhattan.herokuapp.com/gun'], // Public peer
 });
 
 const MainPage = () => {
-  const [userID, setUserID] = useState("");
-  const [contactID, setContactID] = useState("");
-  const [contactAlias, setContactAlias] = useState("");
+  const [userID, setUserID] = useState('');
   const [contacts, setContacts] = useState({});
-  const [messages, setMessages] = useState({});
+  const [file, setFile] = useState(null);
+  const [friendID, setFriendID] = useState('');
 
-  // Initialize user ID from localStorage, or generate a new one
+  // Load the user ID from localStorage or create a new one
   useEffect(() => {
-    const storedUserID = localStorage.getItem("userID");
-    const storedUserPair = localStorage.getItem("userPair");
-    if (storedUserID && storedUserPair) {
+    const storedUserID = localStorage.getItem('userID');
+    if (storedUserID) {
       setUserID(storedUserID);
     } else {
-      generateUserID();
+      const newID = gun.user()._.sea.pub; // Use your public key as ID
+      localStorage.setItem('userID', newID);
+      setUserID(newID);
     }
-
-    // Load contacts from localStorage
-    const storedContacts = JSON.parse(localStorage.getItem("contacts")) || {};
-    setContacts(storedContacts);
   }, []);
 
-  // Generate a new unique User ID and store it in localStorage
-  const generateUserID = async () => {
-    const userPair = await Gun.SEA.pair();
-    setUserID(userPair.pub);
-    localStorage.setItem("userID", userPair.pub);
-    localStorage.setItem("userPair", JSON.stringify(userPair));
-  };
-
-  // Add contact with alias, store in localStorage
-  const addContact = () => {
-    if (!contactID || !contactAlias) {
-      alert("Please enter both Contact ID and Alias");
-      return;
-    }
-
-    const updatedContacts = { ...contacts, [contactID]: contactAlias };
-    setContacts(updatedContacts);
-    localStorage.setItem("contacts", JSON.stringify(updatedContacts));
-    setContactID("");
-    setContactAlias("");
-  };
-
-  // Listen for messages/files sent to each contact's room
+  // Listen to files coming into **your unique room (your userID)**
   useEffect(() => {
-    Object.keys(contacts).forEach((contact) => {
-      gun.get(`room-${contact}`).on(async (data) => {
+    if (userID) {
+      gun.get(`room-${userID}`).on(async (data) => {
         if (data && data.file) {
           try {
-            const userPair = JSON.parse(localStorage.getItem("userPair"));
+            const userPair = JSON.parse(localStorage.getItem('userPair'));
             const decryptedFile = await Gun.SEA.decrypt(data.file, userPair);
 
             // Create a Blob and trigger download
-            const blob = new Blob([decryptedFile], { type: "text/plain" });
-            const link = document.createElement("a");
+            const blob = new Blob([decryptedFile], { type: 'text/plain' });
+            const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = data.fileName || "received-file.txt";
+            link.download = data.fileName || 'received-file.txt';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+
           } catch (error) {
-            console.error(
-              "Error decrypting or saving the received file:",
-              error,
-            );
+            console.error('Error decrypting or saving the received file:', error);
           }
         }
       });
-    });
-  }, [contacts]);
+    }
+  }, [userID]);
+
+  // Handle sending a file to a friend's room (friendID)
+  const sendFile = async () => {
+    if (file && friendID) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const userPair = JSON.parse(localStorage.getItem('userPair'));
+        const encryptedFile = await Gun.SEA.encrypt(reader.result, userPair);
+
+        gun.get(`room-${friendID}`).put({
+          file: encryptedFile,
+          sender: userID, // Your ID, so your friend knows it's from you
+          fileName: file.name,
+        });
+      };
+      reader.readAsText(file);
+    }
+  };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Your User ID (Share this with your friends):</h2>
-      <p>{userID}</p>
-      <button onClick={generateUserID}>Create New Unique ID</button>
-
-      <h3>Add Contact:</h3>
-      <input
-        type="text"
-        placeholder="Enter Contact ID"
-        value={contactID}
-        onChange={(e) => setContactID(e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder="Enter Alias"
-        value={contactAlias}
-        onChange={(e) => setContactAlias(e.target.value)}
-      />
-      <button onClick={addContact}>Add Contact</button>
-
-      <h3>Your Contacts:</h3>
-      <ul>
-        {Object.entries(contacts).map(([contact, alias]) => (
-          <li key={contact}>
-            {alias} ({contact}){" "}
-            <Link to={`/send/${contact}`}>
-              <button>Send File</button>
-            </Link>
-            {messages[contact] && (
-              <p>
-                <strong>New Message:</strong> {messages[contact].fileName}{" "}
-                received
-              </p>
-            )}
-          </li>
-        ))}
-      </ul>
+    <div>
+      <h2>Your User ID: {userID}</h2>
+      <input type="text" value={friendID} onChange={(e) => setFriendID(e.target.value)} placeholder="Enter Friend's ID" />
+      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+      <button onClick={sendFile}>Send File</button>
     </div>
   );
 };
