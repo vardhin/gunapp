@@ -31,7 +31,7 @@ const SendFile = () => {
 
       try {
         const userPair = JSON.parse(localStorage.getItem("userPair"));
-        const encryptedFile = await Gun.SEA.encrypt(fileContent, roomId);
+        const encryptedFile = await Gun.SEA.encrypt(fileContent, roomId); // Encrypt with recipient's public key
 
         const message = {
           file: encryptedFile,
@@ -40,7 +40,7 @@ const SendFile = () => {
           timestamp: Date.now(),
         };
 
-        gun.get(`room-${roomId}`).put(message);
+        gun.get(`room-${roomId}`).put(message); // Send the message to the contact's room
         setStatus("File sent securely!");
       } catch (error) {
         console.error("Error encrypting or sending file:", error);
@@ -48,7 +48,7 @@ const SendFile = () => {
       }
     };
 
-    reader.readAsText(file);
+    reader.readAsText(file); // Reading the file content as text
   };
 
   return (
